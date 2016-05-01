@@ -13,6 +13,10 @@ require_once '../Configure/Connection.class.php';
  */
 class User {
 	private $idUser, $nome, $email, $curso, $telefone, $endereco, $link_foto, $idFacebook;
+
+	/*
+	 * ------------------    CONSTRUCT    --------------------- 
+	 */
 	
 	/**
 	 * <b>Construtor da classe para criar objetos do tipo User como atributos passado nos parametros;<\b>
@@ -41,6 +45,7 @@ class User {
 	 */
 	public function __construct($idUser, $nome, $email, $curso, $telefone, $endereco, $link_foto, $idFacebook) {
 		$this->curso = $curso;
+		$this->nome = $nome;
 		$this->email = $email;
 		$this->endereco = $endereco;
 		$this->idFacebook = $idFacebook;
@@ -48,6 +53,10 @@ class User {
 		$this->link_foto = $link_foto;
 		$this->idFacebook = $idFacebook;
 	}
+	
+	/*
+	 * ------------------   PRIVATE FUNCTIONS ----------------------------
+	 */
 		
 	/**
 	 * <b.Função que criptografa a senha do usuario de forma segura usando bcrypt.
@@ -60,7 +69,7 @@ class User {
 	 * @author Mauricio
 	 * @namespace Usuario
 	 */
-	private function hash_pass($p) { // hash de senha dos usuarios
+	private static function hash_pass($p) { // hash de senha dos usuarios
 		static $cost = 11;
 		static $type = "$2a$";
 		static $salt_length = 22;
@@ -79,6 +88,11 @@ class User {
 		return $hash_bcrypt;
 	}
 	
+	/*
+	 * ------------------ STATIC FUNCTIONS ------------------- 
+	 */
+	
+	
 	/**
 	 * <b>Função que busca um usuario no banco de dados atravez do seu id<\b>
 	 *
@@ -94,13 +108,13 @@ class User {
 	public static function getUserFromId($idUser) {
 		$con = Connection::open ( 'mysql' );
 		
-		$bd = $con->prepare ( "SELECT `id_user`, `nome_user`, `email_user`, `curso`, `telefone`, `endereco`, `link_foto`, `id_facebook` FROM `user` WHERE id_user = ? ;" );
+		$bd = $con->prepare ( "SELECT id_usuario, nome_user, email, curso, telefone, endereco, link_foto, id_facebook FROM USUARIO WHERE id_usuario = ?" );
 		$bd->bindParam ( 1, $idUser );
 		
 		if ($bd->execute ()) {
 			if ($bd->rowCount () > 0) {
 				while ( $row = $bd->fetch ( PDO::FETCH_OBJ ) ) {
-					return new User ( $row->id_user, $row->nome_user, $row->email_user, $row->curso, $row->telefone, $row->endereco, $row->link_foto, $row->idFacebook );
+					return new User ( $row->id_usuario, $row->nome_user, $row->email, $row->curso, $row->telefone, $row->endereco, $row->link_foto, $row->id_facebook );
 				}
 			} else { // id rowCount()
 				return null;
@@ -136,31 +150,28 @@ class User {
 	 * @category Usuario
 	 * @namespace Usuario
 	 */
-	public static function insertUser($nome, $email, $curso, $telefone, $endereco, $link_foto, $idFacebook) {
+	public static function insertUser($nome,$senha, $email, $curso, $telefone, $endereco, $link_foto, $idFacebook) {
 		$con = Connection::open ('mysql');
 
-		if($con){
-			echo "Sucesso conexão estabelecida";
-		}else{
-			echo "Algo esta errado !";
-		}	
+		$cryptSenha = User::hash_pass($senha);
 		
-		$bd = $con->prepare( 'INSERT INTO USUARIO (NOME_USER, EMAIL,CURSO, TELEFONE, ENDERECO, LINK_FOTO, ID_FACEBOOK) VALUES (?,?,?,?,?,?,?)' );
+		$bd = $con->prepare( 'INSERT INTO USUARIO (NOME_USER, SENHA, EMAIL,CURSO, TELEFONE, ENDERECO, LINK_FOTO, ID_FACEBOOK) VALUES (?,?,?,?,?,?,?,?)' );
 		$bd->bindParam ( 1, $nome );
-		$bd->bindParam ( 2, $email );
-		$bd->bindParam ( 3, $curso );
-		$bd->bindParam ( 4, $telefone );
-		$bd->bindParam ( 5, $endereco );
-		$bd->bindParam ( 6, $link_foto );
-		$bd->bindParam ( 7, $idFacebook );
+		$bd->bindParam ( 2, $cryptSenha);
+		$bd->bindParam ( 3, $email );
+		$bd->bindParam ( 4, $curso );
+		$bd->bindParam ( 5, $telefone );
+		$bd->bindParam ( 6, $endereco );
+		$bd->bindParam ( 7, $link_foto );
+		$bd->bindParam ( 8, $idFacebook );
 		
 		if ($bd->execute ()) {
-			$bd2 = $con->prepare ( 'SELECT id_user FROM user WHERE email_user = ?;' );
+			$bd2 = $con->prepare ( 'SELECT ID_USUARIO FROM USUARIO WHERE EMAIL = ?;' );
 			$bd2->bindParam ( 1, $email );
 			if ($bd2->execute ()) {
 				if ($bd2->rowCount () > 0) {
 					$row = $bd2->fetch ( PDO::FETCH_OBJ );
-					return new User ( $row->id_user, $nome, $email, $curso, $telefone, $endereco, $link_foto, $idFacebook );
+					return new User ( $row->ID_USUARIO, $nome, $email, $curso, $telefone, $endereco, $link_foto, $idFacebook );
 				} else { // if rowCount()
 					return NULL;
 				}
@@ -184,13 +195,13 @@ class User {
 	 * @category Usuario
 	 * @namespace Usuario
 	 */
-	public function verificaEmail($email){		
+	public static function verificaEmail($email){		
 		$con = Connection::open('mysql');
-		$bd = $con->prepare("SELECT id_usuario FROM usuario WHERE email = ?;");
+		$bd = $con->prepare("SELECT id_usuario FROM USUARIO WHERE email = ?;");
 		$bd->bindParam(1, $email);
 		if($bd->execute()){
 			if($bd->rowCount() > 0){
-				$row = $bd->fecth(PDO::FETCH_OBJ);
+				$row = $bd->fetch(PDO::FETCH_OBJ);
 				return $row->id_usuario;
 			}else{ //If rowCount()
 				return NULL;
@@ -201,16 +212,16 @@ class User {
 		return NULL;		
 	}
 
-	public function verificaUser($email, $senha){
+	public static function verificaUser($email, $senha){
 		$con = Connection::open('mysql');
-		$bd = $con->prepare("SELECT email, senha, id_usuario FROM usuario WHERE email = ?");
-		$bd->bindParams(1, $email);
+		$bd = $con->prepare("SELECT email, senha, id_usuario FROM USUARIO WHERE email = ?");
+		$bd->bindParam(1, $email);
 		$bd->execute();
 		
 		if($bd->rowCount() > 0){
 			$row = $bd->fetch(PDO::FETCH_OBJ);
 			if(crypt($senha, $row->senha) == $row->senha){
-				return $this->getUserFromId($row->id_usuario);
+				return User::getUserFromId($row->id_usuario);
 			}else{// IF CRYPT   | SENHA ERRADA
 				return FALSE;
 			}
@@ -219,6 +230,34 @@ class User {
 		}
 		
 	}
-
+	
+	/*
+	 *  -------- Override Functions AND GETs ---------------
+	 */
+	function __toString(){
+		return "Nome: <b>{$this->nome}</b>
+		<br>Email: <b>{$this->email}</b>
+		<br>Curso: <b>{$this->curso}</b>
+		<br>Endereco: <b>{$this->endereco}</b>
+		<br>ID: <b>{$this->idUser}</b>
+		<br>ID Facebook: <b>{$this->idFacebook}</b>
+		<br>Foto perfil: <b>{$this->link_foto}</b>";
+	}
+	
+	function getNome(){return $this->nome;}
+	
+	function getEmail(){return $this->email;}
+	
+	function getIdUser(){return $this->idUser;}
+	
+	function getCurso(){return $this->curso;}
+	
+	function getTelefone(){return $this->telefone;}
+	
+	function getEndereco(){return $this->endereco;}
+	
+	function getLinkFoto(){return $this->link_foto;}
+	
+	function getIdFacebook(){return $this->idFacebook;}
 }
 	

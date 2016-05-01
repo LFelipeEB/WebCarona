@@ -1,6 +1,6 @@
 <snippet>
   <content><![CDATA[
-# ${1:Partiu Facu - WebService }
+# Partiu Facu - WebService 
 Este repositorio tem intuito de criar um repositorio do Service que o aplicativo PartiuFacu utiliza.
 
 ## Installation
